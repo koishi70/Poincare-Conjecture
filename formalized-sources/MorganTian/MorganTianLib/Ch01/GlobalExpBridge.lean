@@ -84,5 +84,48 @@ theorem globalGeodesic_isGeodesicOnWithInitial
       rw [hg'v]
     simpa [hmap] using hcong
 
+/-- **Math.** **Bridge: on a chart-valid, preconnected interval, the canonical
+maximal geodesic equals the (complete) global geodesic.** In `[CompleteSpace M]`,
+`globalGeodesic g hg p v` is a genuine `IsGeodesicOnWithInitial` witness (via
+`globalGeodesic_isGeodesicOnWithInitial`), so `maximalGeodesic_eq_witness_of_mem_chart`
+forces `maximalGeodesic g p v = globalGeodesic g hg p v` pointwise on `J`.
+
+This is the key bridge for de-completeness: it lets us replace the global
+(complete) geodesic by the domain-restricted maximal geodesic on any chart-valid
+preconnected neighbourhood of `0`, without invoking `[CompleteSpace M]` on the
+`maximalGeodesic` side. -/
+theorem maximalGeodesic_eq_globalGeodesic
+    {g : RiemannianMetric I M} (hg : g.IsRiemannianDist) [CompleteSpace M]
+    [T2Space (TangentBundle I M)]
+    (p : M) (v : TangentSpace I p) {J : Set ℝ}
+    (hJ : IsOpen J) (hJc : IsPreconnected J) (hJ0 : (0 : ℝ) ∈ J)
+    (hsrc0 : ∀ t ∈ J, (MorganTianLib.globalGeodesic (I := I) g hg p v) t ∈ (chartAt H p).source) :
+    ∀ s ∈ J, maximalGeodesic (I := I) g p v s = MorganTianLib.globalGeodesic (I := I) g hg p v s := by
+  intro s hs
+  exact maximalGeodesic_eq_witness_of_mem_chart (I := I)
+    (globalGeodesic_isGeodesicOnWithInitial (I := I) hg (J := J) hJ0 hsrc0)
+    hJ hJc hJ0 hsrc0 hs
+
+/-- **Math.** **On a chart-valid preconnected interval, the maximal geodesic is a
+geodesic.** Since the bridge forces `maximalGeodesic = globalGeodesic` on `J` and the
+global geodesic is a genuine `IsGeodesic`, and `J` is open so that they agree on a
+neighbourhood of each point, the intrinsic geodesic equation transfers. -/
+theorem isGeodesicOn_maximalGeodesic_of_global
+    {g : RiemannianMetric I M} (hg : g.IsRiemannianDist) [CompleteSpace M]
+    [T2Space (TangentBundle I M)]
+    (p : M) (v : TangentSpace I p) {J : Set ℝ}
+    (hJ : IsOpen J) (hJc : IsPreconnected J) (hJ0 : (0 : ℝ) ∈ J)
+    (hsrc0 : ∀ t ∈ J, (MorganTianLib.globalGeodesic (I := I) g hg p v) t ∈ (chartAt H p).source) :
+    IsGeodesicOn (I := I) g (maximalGeodesic (I := I) g p v) J := by
+  have hgeo_glob : IsGeodesic (I := I) g (MorganTianLib.globalGeodesic (I := I) g hg p v) :=
+    MorganTianLib.isGeodesic_globalGeodesic g hg p v
+  have hbridge : ∀ s ∈ J, maximalGeodesic (I := I) g p v s = MorganTianLib.globalGeodesic (I := I) g hg p v s :=
+    maximalGeodesic_eq_globalGeodesic (I := I) hg p v hJ hJc hJ0 hsrc0
+  intro t ht
+  have hev : maximalGeodesic (I := I) g p v =ᶠ[𝓝 t] MorganTianLib.globalGeodesic (I := I) g hg p v := by
+    filter_upwards [hJ.mem_nhds ht] with s hs
+    exact hbridge s hs
+  exact hasGeodesicEquationAt_congr_of_eventuallyEq (I := I) hev (hgeo_glob t)
+
 end Geodesic
 end Riemannian
