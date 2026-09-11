@@ -1,4 +1,5 @@
 import MorganTianLib.Ch01.GlobalExp
+import MorganTianLib.Ch01.GeodesicRegularity
 import DoCarmoLib.Riemannian.Geodesic.InitialVelocity
 import DoCarmoLib.Riemannian.Geodesic.EquationTransfer
 
@@ -126,6 +127,36 @@ theorem isGeodesicOn_maximalGeodesic_of_global
     filter_upwards [hJ.mem_nhds ht] with s hs
     exact hbridge s hs
   exact hasGeodesicEquationAt_congr_of_eventuallyEq (I := I) hev (hgeo_glob t)
+
+/-- **Math.** **The chart reading of the maximal geodesic is `C^n` on any open set
+over which its foot stays in the chart source.** This is the de-completeness
+analogue of `contDiffOn_chartReading_globalGeodesic`: it is derived from the
+bridge (so the maximal geodesic is a geodesic and is continuous on `J`), *without*
+any `[CompleteSpace M]` or global chart-validity clause. -/
+theorem contDiffOn_chartReading_maximalGeodesic
+    {g : RiemannianMetric I M} (hg : g.IsRiemannianDist) [CompleteSpace M]
+    [T2Space (TangentBundle I M)]
+    (p : M) (v : TangentSpace I p) {β : M} {J : Set ℝ}
+    (hJ : IsOpen J) (hJc : IsPreconnected J) (hJ0 : (0 : ℝ) ∈ J)
+    (hsrc0 : ∀ t ∈ J, (MorganTianLib.globalGeodesic (I := I) g hg p v) t ∈ (chartAt H p).source)
+    (hsrc : ∀ t ∈ J, maximalGeodesic (I := I) g p v t ∈ (chartAt H β).source)
+    (n : ℕ) :
+    ContDiffOn ℝ n (chartReading (I := I) β (maximalGeodesic (I := I) g p v)) J := by
+  have hgeo : IsGeodesicOn (I := I) g (maximalGeodesic (I := I) g p v) J :=
+    isGeodesicOn_maximalGeodesic_of_global (I := I) hg p v hJ hJc hJ0 hsrc0
+  have hbridge : ∀ s ∈ J, maximalGeodesic (I := I) g p v s = MorganTianLib.globalGeodesic (I := I) g hg p v s :=
+    maximalGeodesic_eq_globalGeodesic (I := I) hg p v hJ hJc hJ0 hsrc0
+  have hcont_glob : Continuous (MorganTianLib.globalGeodesic (I := I) g hg p v) :=
+    MorganTianLib.continuous_globalGeodesic g hg p v
+  have hcont : ContinuousOn (maximalGeodesic (I := I) g p v) J := by
+    intro t ht
+    have hev : maximalGeodesic (I := I) g p v =ᶠ[𝓝[J] t] MorganTianLib.globalGeodesic (I := I) g hg p v := by
+      filter_upwards [self_mem_nhdsWithin (s := J) (a := t)] with s hs
+      exact hbridge s hs
+    exact ContinuousWithinAt.congr_of_eventuallyEq
+      (hcont_glob.continuousAt.continuousWithinAt.mono (Set.subset_univ _)) hev (hbridge t ht)
+  exact MorganTianLib.contDiffOn_chartReading_of_isGeodesicOn g hJ hgeo
+    (fun t ht => (hcont t ht).continuousAt (hJ.mem_nhds ht)) hsrc n
 
 end Geodesic
 end Riemannian
