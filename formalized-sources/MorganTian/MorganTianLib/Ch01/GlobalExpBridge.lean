@@ -1,6 +1,7 @@
 import MorganTianLib.Ch01.GlobalExp
 import MorganTianLib.Ch01.GeodesicRegularity
 import MorganTianLib.Ch01.JunctionGeodesic
+import MorganTianLib.Ch01.ExpLocalDiffeo
 import DoCarmoLib.Riemannian.Geodesic.InitialVelocity
 import DoCarmoLib.Riemannian.Geodesic.EquationTransfer
 
@@ -257,6 +258,45 @@ theorem covDerivAlong_fst_eq_zero_of_maximalGeodesic_junction
     rw [maximalGeodesic_zero]
     exact hsrc
   exact MorganTianLib.covDerivAlong_fst_eq_zero_of_geodesic_junction (I := I) hu hgeo hcont hsrc0 hslice
+
+/-- **Math.** **Rescaling the initial vector rescales time, `maximalGeodesic` version.**
+The de-completeness analogue of `MorganTianLib.globalGeodesic_smul`: on a neighbourhood
+of `0`, `maximalGeodesic g p (c • v)` agrees with `s ↦ maximalGeodesic g p v (c * s)`.
+In the complete case this follows from the bridge to `globalGeodesic` together with
+`globalGeodesic_smul` and the fact that `s ↦ c * s` is continuous at `0` (so that the
+`eventuallyEq` locality transfers).  This supplies the rescaling homogeneity needed to
+further de-complete the minimising-geodesic statements that still assume `[CompleteSpace M]`. -/
+theorem maximalGeodesic_smul
+    {g : RiemannianMetric I M} (hg : g.IsRiemannianDist) [CompleteSpace M]
+    [T2Space (TangentBundle I M)] [SigmaCompactSpace M] (p : M) (v : TangentSpace I p) (c : ℝ) :
+    maximalGeodesic (I := I) g p (c • v) =ᶠ[𝓝 (0 : ℝ)] fun s => maximalGeodesic (I := I) g p v (c * s) := by
+  by_cases hc : c = 0
+  · subst c
+    exact Filter.Eventually.of_forall (fun s =>
+      by simp [zero_smul, zero_mul, maximalGeodesic_zero_velocity (I := I) (g := g) p,
+        maximalGeodesic_zero (I := I) (g := g) p v])
+  · have h1 : maximalGeodesic (I := I) g p (c • v) =ᶠ[𝓝 (0 : ℝ)]
+        MorganTianLib.globalGeodesic (I := I) g hg p (c • v) := by
+      exact maximalGeodesic_eventuallyEq_globalGeodesic (I := I) hg p (c • v)
+    have hsmul : MorganTianLib.globalGeodesic (I := I) g hg p (c • v)
+        = fun s => MorganTianLib.globalGeodesic (I := I) g hg p v (c * s) :=
+      MorganTianLib.globalGeodesic_smul (I := I) g hg p v c
+    have smul_ev : MorganTianLib.globalGeodesic (I := I) g hg p (c • v) =ᶠ[𝓝 (0 : ℝ)]
+        (fun s => MorganTianLib.globalGeodesic (I := I) g hg p v (c * s)) := by
+      rw [hsmul]
+    have h2 : (fun s => maximalGeodesic (I := I) g p v (c * s)) =ᶠ[𝓝 (0 : ℝ)]
+        (fun s => MorganTianLib.globalGeodesic (I := I) g hg p v (c * s)) := by
+      have hev : maximalGeodesic (I := I) g p v =ᶠ[𝓝 (0 : ℝ)]
+          MorganTianLib.globalGeodesic (I := I) g hg p v := by
+        exact maximalGeodesic_eventuallyEq_globalGeodesic (I := I) hg p v
+      have hc' : Continuous (fun s : ℝ => c * s) := by continuity
+      have hct : Filter.Tendsto (fun s : ℝ => c * s) (𝓝 (0 : ℝ)) (𝓝 (0 : ℝ)) := by
+        simpa [mul_zero] using (hc'.tendsto (0 : ℝ))
+      have hev' : ∀ᶠ t in 𝓝 (0 : ℝ), maximalGeodesic (I := I) g p v t = MorganTianLib.globalGeodesic (I := I) g hg p v t := hev
+      have hcomp : ∀ᶠ s in 𝓝 (0 : ℝ), maximalGeodesic (I := I) g p v (c * s) = MorganTianLib.globalGeodesic (I := I) g hg p v (c * s) :=
+        hct.eventually hev'
+      exact hcomp
+    exact h1.trans (smul_ev.trans h2.symm)
 
 end Geodesic
 end Riemannian
