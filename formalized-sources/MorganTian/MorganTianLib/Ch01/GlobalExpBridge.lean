@@ -1,5 +1,6 @@
 import MorganTianLib.Ch01.GlobalExp
 import MorganTianLib.Ch01.GeodesicRegularity
+import MorganTianLib.Ch01.JunctionGeodesic
 import DoCarmoLib.Riemannian.Geodesic.InitialVelocity
 import DoCarmoLib.Riemannian.Geodesic.EquationTransfer
 
@@ -190,6 +191,72 @@ theorem maximalGeodesic_eventuallyEq_globalGeodesic
       ⟨by linarith, hδ⟩ hsub
   filter_upwards [(isOpen_Ioo.mem_nhds (⟨by linarith, hδ⟩ : 0 ∈ Ioo (-δ) δ))] with s hs
   exact hb s hs
+
+/-- **Math.** **A geodesic with zero initial velocity is constant.** The maximal
+geodesic `maximalGeodesic g p 0` is the constant curve at `p`: the constant curve
+is itself an `IsGeodesicOnWithInitial` witness with the right initial data, so by
+`maximalGeodesic_eq_witness_of_mem_chart` it *is* `maximalGeodesic g p 0`. This is
+the de-completeness analogue of `globalGeodesic_zero_velocity`. -/
+theorem maximalGeodesic_zero_velocity
+    {g : RiemannianMetric I M} [T2Space (TangentBundle I M)]
+    (p : M) :
+    maximalGeodesic (I := I) g p (0 : TangentSpace I p) = fun _ => p := by
+  have hw := isGeodesicOnWithInitial_of_hasDerivAt_sprayCoord (I := I) g p (0 : TangentSpace I p)
+    (J := Set.univ) (z := fun _ => ((extChartAt I p) p, (0 : E)))
+    (by rfl)
+    (by
+      intro t ht
+      change HasDerivAt (fun _ : ℝ => ((extChartAt I p) p, (0 : E)))
+        (geodesicSprayCoord (I := I) g p ((extChartAt I p) p) (0 : E)) t
+      have hsp : geodesicSprayCoord (I := I) g p ((extChartAt I p) p) (0 : E) = (0 : E × E) := by
+        simp [geodesicSprayCoord]
+      rw [hsp]
+      exact (hasDerivAt_const t ((extChartAt I p) p, (0 : E))))
+    (by
+      intro t ht
+      rw [extChartAt_tangent_target]
+      exact ⟨(extChartAt I p).map_source (by simpa using mem_chart_source H p), trivial⟩)
+  funext s
+  have hmuneq : maximalGeodesic (I := I) g p (0 : TangentSpace I p) s =
+      (fun t => ((extChartAt I.tangent (⟨p, (0 : E)⟩ : TangentBundle I M)).symm
+        ((fun _ : ℝ => ((extChartAt I p) p, (0 : E))) t)).proj) s :=
+    maximalGeodesic_eq_witness_of_mem_chart (I := I) (g := g) (p := p) (v := (0 : TangentSpace I p))
+      hw.1 isOpen_univ isPreconnected_univ trivial hw.2.1 trivial
+  rw [hmuneq]
+  apply (extChartAt I p).injOn
+  · simpa [extChartAt_source] using (hw.2.1 s trivial)
+  · simpa [extChartAt_source] using mem_chart_source H p
+  · simpa using (hw.2.2 s trivial)
+
+/-- **Math.** **The junction hypothesis for a maximal-geodesic junction curve** — the
+de-completeness analogue of `covDerivAlong_fst_eq_zero_of_globalGeodesic_junction`.
+Instead of the complete `globalGeodesic`, it uses the domain-restricted
+`maximalGeodesic`; the geodesic equation and continuity at `0` are obtained via the
+bridge (`maximalGeodesic_eventuallyEq_globalGeodesic`), without a global chart-validity
+clause. -/
+theorem covDerivAlong_fst_eq_zero_of_maximalGeodesic_junction
+    {g : RiemannianMetric I M} (hg : g.IsRiemannianDist) [CompleteSpace M]
+    [T2Space (TangentBundle I M)]
+    {u : ℝ × ℝ → E} {α : M} {p : M} {w : TangentSpace I p} {τ : ℝ}
+    (hu : ContDiff ℝ 2 u) (hsrc : p ∈ (chartAt H α).source)
+    (hslice : ∀ᶠ r in 𝓝 (0 : ℝ), u (r, τ) = extChartAt I α (maximalGeodesic (I := I) g p w r)) :
+    MorganTianLib.covDerivAlong (MorganTianLib.chartChristoffelBilin (I := I) g α) u
+      (fun q => fderiv ℝ u q ((1 : ℝ), (0 : ℝ))) ((1 : ℝ), (0 : ℝ))
+      ((0 : ℝ), τ) = 0 := by
+  have hev : maximalGeodesic (I := I) g p w =ᶠ[𝓝 (0 : ℝ)] MorganTianLib.globalGeodesic (I := I) g hg p w :=
+    maximalGeodesic_eventuallyEq_globalGeodesic (I := I) hg p w
+  have hgeo : HasGeodesicEquationAt (I := I) g (maximalGeodesic (I := I) g p w) 0 := by
+    have hglob : HasGeodesicEquationAt (I := I) g (MorganTianLib.globalGeodesic (I := I) g hg p w) 0 :=
+      (MorganTianLib.isGeodesic_globalGeodesic g hg p w).hasGeodesicEquationAt 0
+    exact hasGeodesicEquationAt_congr_of_eventuallyEq (I := I) hev hglob
+  have hcont : ContinuousAt (maximalGeodesic (I := I) g p w) 0 := by
+    have hca : ContinuousAt (MorganTianLib.globalGeodesic (I := I) g hg p w) 0 :=
+      (MorganTianLib.continuous_globalGeodesic g hg p w).continuousAt
+    exact hca.congr_of_eventuallyEq hev
+  have hsrc0 : maximalGeodesic (I := I) g p w 0 ∈ (chartAt H α).source := by
+    rw [maximalGeodesic_zero]
+    exact hsrc
+  exact MorganTianLib.covDerivAlong_fst_eq_zero_of_geodesic_junction (I := I) hu hgeo hcont hsrc0 hslice
 
 end Geodesic
 end Riemannian
