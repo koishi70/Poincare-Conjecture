@@ -158,5 +158,38 @@ theorem contDiffOn_chartReading_maximalGeodesic
   exact MorganTianLib.contDiffOn_chartReading_of_isGeodesicOn g hJ hgeo
     (fun t ht => (hcont t ht).continuousAt (hJ.mem_nhds ht)) hsrc n
 
+/-- **Math.** **Local de-completeness bridge: the maximal geodesic agrees with the
+complete global geodesic on a neighbourhood of `0`.** This is the convenient form
+of `maximalGeodesic_eq_globalGeodesic`: instead of requiring the caller to provide
+a chart-valid preconnected interval, we construct one (`Ioo (-δ) δ`) from the fact
+that the global geodesic is continuous with `γ(0) = p ∈ (chartAt H p).source`, and
+obtain an `eventuallyEq` (not a pointwise equality on a fixed set). This is the
+practical key for replacing `globalGeodesic` by `maximalGeodesic` in the
+de-completeness sources, since it yields regularity transfer (continuity, chart
+ContDiff, geodesic equation) on a neighbourhood of `0` without any global
+chart-validity clause. -/
+theorem maximalGeodesic_eventuallyEq_globalGeodesic
+    {g : RiemannianMetric I M} (hg : g.IsRiemannianDist) [CompleteSpace M]
+    [T2Space (TangentBundle I M)]
+    (p : M) (v : TangentSpace I p) :
+    maximalGeodesic (I := I) g p v =ᶠ[𝓝 (0 : ℝ)] MorganTianLib.globalGeodesic (I := I) g hg p v := by
+  have hglob0 : MorganTianLib.globalGeodesic (I := I) g hg p v 0 = p :=
+    MorganTianLib.globalGeodesic_zero g hg p v
+  have hsrc : MorganTianLib.globalGeodesic (I := I) g hg p v 0 ∈ (chartAt H p).source := by
+    rw [hglob0]; exact mem_chart_source H p
+  have hcont : Continuous (MorganTianLib.globalGeodesic (I := I) g hg p v) :=
+    MorganTianLib.continuous_globalGeodesic g hg p v
+  have hpre : MorganTianLib.globalGeodesic (I := I) g hg p v ⁻¹' (chartAt H p).source ∈ 𝓝 (0 : ℝ) :=
+    ((chartAt H p).open_source.preimage hcont).mem_nhds hsrc
+  obtain ⟨δ, hδ, hball⟩ := Metric.mem_nhds_iff.mp hpre
+  have hsub : ∀ t ∈ Ioo (-δ) δ, MorganTianLib.globalGeodesic (I := I) g hg p v t ∈ (chartAt H p).source := by
+    intro t ht
+    exact hball (by rw [Metric.mem_ball, Real.dist_eq, sub_zero, abs_lt]; exact ⟨ht.1, ht.2⟩)
+  have hb : ∀ s ∈ Ioo (-δ) δ, maximalGeodesic (I := I) g p v s = MorganTianLib.globalGeodesic (I := I) g hg p v s :=
+    maximalGeodesic_eq_globalGeodesic (I := I) hg p v isOpen_Ioo (convex_Ioo _ _).isPreconnected
+      ⟨by linarith, hδ⟩ hsub
+  filter_upwards [(isOpen_Ioo.mem_nhds (⟨by linarith, hδ⟩ : 0 ∈ Ioo (-δ) δ))] with s hs
+  exact hb s hs
+
 end Geodesic
 end Riemannian
